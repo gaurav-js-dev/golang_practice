@@ -29,7 +29,7 @@ func main() {
 	// 	panic(err)
 	// }
 
-	h := adventure.NewHandler(story)
+	h := adventure.NewHandler(story, nil)
 
 	fmt.Printf("starting server at %d\n", *port)
 
