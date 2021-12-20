@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,7 +33,7 @@ func main() {
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		stories, err := getTopStories(numStories)
+		stories, err := getCachedStories(numStories)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -49,6 +50,27 @@ func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 			return
 		}
 	})
+}
+
+var (
+	cache           []item
+	cacheExpiration time.Time
+	cacheMutex      sync.Mutex
+)
+
+func getCachedStories(numStories int) ([]item, error) {
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+	if time.Now().Sub(cacheExpiration) < 0 {
+		return cache, nil
+	}
+	stories, err := getTopStories(numStories)
+	if err != nil {
+		return nil, err
+	}
+	cache = stories
+	cacheExpiration = time.Now().Add(5 * time.Second)
+	return cache, nil
 }
 
 func getTopStories(numStories int) ([]item, error) {
